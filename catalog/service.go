@@ -2,7 +2,9 @@ package catalog
 
 import (
 	"context"
+	"log"
 
+	"github.com/JawadMM/ecomm/events"
 	"github.com/segmentio/ksuid"
 )
 
@@ -23,10 +25,11 @@ type Product struct {
 
 type catalogService struct {
 	repository Respository
+	publisher  *events.Publisher
 }
 
-func NewService(repository Respository) *catalogService {
-	return &catalogService{repository: repository}
+func NewService(repository Respository, pub *events.Publisher) *catalogService {
+	return &catalogService{repository: repository, publisher: pub}
 }
 
 func (s *catalogService) PostProduct(ctx context.Context, name, description string, price float64) (*Product, error) {
@@ -36,13 +39,19 @@ func (s *catalogService) PostProduct(ctx context.Context, name, description stri
 		Description: description,
 		Price:       price,
 	}
-
 	product, err := s.repository.PutProduct(ctx, product)
-
 	if err != nil {
 		return nil, err
 	}
-
+	if s.publisher != nil {
+		s.publisher.Publish(events.SubjectProductUpdated, events.ProductUpdatedEvent{
+			ID:          product.ID,
+			Name:        product.Name,
+			Description: product.Description,
+			Price:       product.Price,
+		})
+		log.Printf("[NATS pub] product.updated — id=%s name=%s price=%.2f", product.ID, product.Name, product.Price)
+	}
 	return product, nil
 }
 

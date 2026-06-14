@@ -1,11 +1,12 @@
 package main
 
 import (
+	"context"
 	"log"
 	"time"
 
-	"github.com/JawadMM/ecomm/account"
 	"github.com/JawadMM/ecomm/events"
+	"github.com/JawadMM/ecomm/order"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/tinrab/retry"
 )
@@ -22,15 +23,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var r account.Repository
+	var r order.Repository
 	retry.ForeverSleep(2*time.Second, func(_ int) (err error) {
-		r, err = account.NewPostgresRepository(cfg.DatabaseURL)
+		r, err = order.NewMongoRepository(cfg.DatabaseURL)
 		if err != nil {
 			log.Printf("Failed to connect to database: %v. Retrying...", err)
 		}
 		return
 	})
-	defer r.Close()
+	ctx := context.Background()
+	defer r.Close(ctx)
 
 	var pub *events.Publisher
 	if cfg.NatsURL != "" {
@@ -39,21 +41,10 @@ func main() {
 			log.Fatalf("Failed to connect to NATS: %v", err)
 		}
 		defer pub.Close()
-
-		nc, err := events.NewConn(cfg.NatsURL)
-		if err != nil {
-			log.Fatalf("Failed to open NATS subscription connection: %v", err)
-		}
-		defer nc.Drain()
-
-		events.Subscribe(nc, events.SubjectOrderCreated, func(e events.OrderCreatedEvent) {
-			log.Printf("[NATS sub] order.created — id=%s account=%s total=%.2f", e.ID, e.AccountID, e.TotalPrice)
-		})
-
 		log.Println("Connected to NATS")
 	}
 
 	log.Println("Listening on port 8080...")
-	s := account.NewService(r, pub)
-	log.Fatal(account.ListenGRPC(s, 8080))
+	s := order.NewService(r, pub)
+	log.Fatal(order.ListenGRPC(s, 8080))
 }

@@ -1,8 +1,22 @@
 schema: graphql/schema.graphql
 
+exec:
+  filename: graphql/generated.go
+  package: graphql
+
+model:
+  filename: graphql/models_gen.go
+  package: graphql
+
 models:
   Account:
     model: github.com/JawadMM/ecomm/graphql.Account
     fields:
       orders:
         resolver: true
+  Order:
+    model: github.com/JawadMM/ecomm/graphql.Order
+  OrderedProduct:
+    model: github.com/JawadMM/ecomm/graphql.OrderedProduct
+  Product:
+    model: github.com/JawadMM/ecomm/graphql.Product

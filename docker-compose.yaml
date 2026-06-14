@@ -1,8 +1,77 @@
 services:
+
   account:
-  catalog:
-  order:
-  graphql:
+    build:
+      context: .
+      dockerfile: account/app.dockerfile
+    environment:
+      DATABASE_URL: postgres://account:password@account_db/account?sslmode=disable
+      NATS_URL: nats://nats:4222
+    depends_on:
+      - account_db
+      - nats
+    restart: on-failure
+
   account_db:
+    build:
+      context: ./account
+      dockerfile: db.dockerfile
+    environment:
+      POSTGRES_DB: account
+      POSTGRES_USER: account
+      POSTGRES_PASSWORD: password
+
+  catalog:
+    build:
+      context: .
+      dockerfile: catalog/app.dockerfile
+    environment:
+      DATABASE_URL: http://catalog_db:9200
+      NATS_URL: nats://nats:4222
+    depends_on:
+      - catalog_db
+      - nats
+    restart: on-failure
+
   catalog_db:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.18
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+
+  order:
+    build:
+      context: .
+      dockerfile: order/app.dockerfile
+    environment:
+      DATABASE_URL: mongodb://order_db:27017/orders_db
+      NATS_URL: nats://nats:4222
+    depends_on:
+      - order_db
+      - nats
+    restart: on-failure
+
   order_db:
+    image: mongo:7
+
+  graphql:
+    build:
+      context: .
+      dockerfile: graphql/app.dockerfile
+    environment:
+      ACCOUNT_SERVICE_URL: account:8080
+      CATALOG_SERVICE_URL: catalog:8080
+      ORDER_SERVICE_URL: order:8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - account
+      - catalog
+      - order
+    restart: on-failure
+
+  nats:
+    image: nats:latest
+    ports:
+      - "4222:4222"

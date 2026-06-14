@@ -1,17 +1,19 @@
-FROM golang:latest AS build
+FROM golang:alpine AS build
 
-RUN apk --no-cache add gcc g++ make ca-certificates
+RUN apk --no-cache add ca-certificates
 
 WORKDIR /go/src/github.com/JawadMM/ecomm
 
 COPY go.mod go.sum ./
-COPY vendor vendor
+RUN go mod download
+
+COPY events events
 COPY catalog catalog
 
-RUN GO111MODULE=on go build -mod vendor -o /go/bin/app ./catalog/cmd/catalog
+RUN CGO_ENABLED=0 GOOS=linux go build -o /go/bin/app ./catalog/cmd/catalog
 
 FROM alpine:latest
-WORKDIR /usr/bin
-COPY --from=build /go/bin .
+RUN apk --no-cache add ca-certificates
+COPY --from=build /go/bin/app /usr/bin/app
 EXPOSE 8080
 CMD ["app"]

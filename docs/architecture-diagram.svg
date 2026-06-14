@@ -1,0 +1,165 @@
+<svg viewBox="0 0 860 620" xmlns="http://www.w3.org/2000/svg" role="img" font-family="ui-monospace, 'SF Mono', monospace" font-size="12">
+  <title>go-ecomm Microservices Architecture</title>
+  <desc>Diagram showing the GraphQL gateway, three backend services, three databases, and the NATS broker with their communication protocols.</desc>
+
+  <defs>
+    <marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#4A90D9"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#27AE60"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#E67E22"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#888"/>
+    </marker>
+  </defs>
+
+  <rect width="860" height="620" fill="#0d1117" rx="12"/>
+
+  <!-- Title -->
+  <text x="430" y="32" text-anchor="middle" fill="#e6edf3" font-size="15" font-weight="700" letter-spacing="0.5">go-ecomm · Service Architecture</text>
+
+  <!-- Legend -->
+  <g transform="translate(30,52)">
+    <line x1="0" y1="8" x2="28" y2="8" stroke="#4A90D9" stroke-width="2" marker-end="url(#arrow-blue)"/>
+    <text x="34" y="12" fill="#8b949e" font-size="11">HTTP / GraphQL</text>
+    <line x1="160" y1="8" x2="188" y2="8" stroke="#27AE60" stroke-width="2" marker-end="url(#arrow-green)"/>
+    <text x="194" y="12" fill="#8b949e" font-size="11">gRPC + Protobuf</text>
+    <line x1="330" y1="8" x2="358" y2="8" stroke="#E67E22" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow-orange)"/>
+    <text x="364" y="12" fill="#8b949e" font-size="11">NATS pub/sub (async)</text>
+    <line x1="530" y1="8" x2="558" y2="8" stroke="#888" stroke-width="2" marker-end="url(#arrow-gray)"/>
+    <text x="564" y="12" fill="#8b949e" font-size="11">Driver (TCP)</text>
+  </g>
+
+  <!-- Client -->
+  <g transform="translate(330,88)">
+    <rect width="200" height="52" rx="8" fill="#1c2333" stroke="#4A90D9" stroke-width="1.5"/>
+    <text x="100" y="22" text-anchor="middle" fill="#4A90D9" font-weight="700" font-size="13">Client</text>
+    <text x="100" y="38" text-anchor="middle" fill="#8b949e" font-size="10">Browser / Mobile / CLI</text>
+  </g>
+
+  <!-- Client → GraphQL -->
+  <line x1="430" y1="140" x2="430" y2="170" stroke="#4A90D9" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <rect x="446" y="147" width="94" height="16" rx="3" fill="#0d1117"/>
+  <text x="493" y="159" text-anchor="middle" fill="#4A90D9" font-size="10">POST /graphql :8080</text>
+
+  <!-- GraphQL Gateway -->
+  <g transform="translate(305,170)">
+    <rect width="250" height="60" rx="8" fill="#1c2333" stroke="#4A90D9" stroke-width="2"/>
+    <text x="125" y="24" text-anchor="middle" fill="#e6edf3" font-weight="700" font-size="13">GraphQL Gateway</text>
+    <text x="125" y="40" text-anchor="middle" fill="#8b949e" font-size="10">POST /graphql · GET /playground</text>
+    <text x="125" y="54" text-anchor="middle" fill="#8b949e" font-size="10">gqlgen · :8080 (public)</text>
+  </g>
+
+  <!-- Gateway → Account -->
+  <line x1="360" y1="230" x2="180" y2="310" stroke="#27AE60" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <rect x="216" y="256" width="94" height="16" rx="3" fill="#0d1117"/>
+  <text x="263" y="268" text-anchor="middle" fill="#27AE60" font-size="10">gRPC · account:8080</text>
+
+  <!-- Gateway → Catalog -->
+  <line x1="430" y1="230" x2="430" y2="310" stroke="#27AE60" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <rect x="436" y="256" width="94" height="16" rx="3" fill="#0d1117"/>
+  <text x="483" y="268" text-anchor="middle" fill="#27AE60" font-size="10">gRPC · catalog:8080</text>
+
+  <!-- Gateway → Order -->
+  <line x1="500" y1="230" x2="680" y2="310" stroke="#27AE60" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <rect x="546" y="256" width="94" height="16" rx="3" fill="#0d1117"/>
+  <text x="593" y="268" text-anchor="middle" fill="#27AE60" font-size="10">gRPC · order:8080</text>
+
+  <!-- Account Service -->
+  <g transform="translate(60,310)">
+    <rect width="220" height="68" rx="8" fill="#1c2333" stroke="#27AE60" stroke-width="1.5"/>
+    <text x="110" y="22" text-anchor="middle" fill="#e6edf3" font-weight="700" font-size="13">Account Service</text>
+    <text x="110" y="38" text-anchor="middle" fill="#8b949e" font-size="10">PostAccount · GetAccount</text>
+    <text x="110" y="52" text-anchor="middle" fill="#8b949e" font-size="10">ListAccounts</text>
+    <text x="110" y="66" text-anchor="middle" fill="#8b949e" font-size="10">:8080 internal</text>
+  </g>
+
+  <!-- Catalog Service -->
+  <g transform="translate(320,310)">
+    <rect width="220" height="68" rx="8" fill="#1c2333" stroke="#27AE60" stroke-width="1.5"/>
+    <text x="110" y="22" text-anchor="middle" fill="#e6edf3" font-weight="700" font-size="13">Catalog Service</text>
+    <text x="110" y="38" text-anchor="middle" fill="#8b949e" font-size="10">PostProduct · GetProduct</text>
+    <text x="110" y="52" text-anchor="middle" fill="#8b949e" font-size="10">GetProducts (search / batch)</text>
+    <text x="110" y="66" text-anchor="middle" fill="#8b949e" font-size="10">:8080 internal</text>
+  </g>
+
+  <!-- Order Service -->
+  <g transform="translate(580,310)">
+    <rect width="220" height="68" rx="8" fill="#1c2333" stroke="#27AE60" stroke-width="1.5"/>
+    <text x="110" y="22" text-anchor="middle" fill="#e6edf3" font-weight="700" font-size="13">Order Service</text>
+    <text x="110" y="38" text-anchor="middle" fill="#8b949e" font-size="10">PostOrder</text>
+    <text x="110" y="52" text-anchor="middle" fill="#8b949e" font-size="10">GetOrdersForAccount</text>
+    <text x="110" y="66" text-anchor="middle" fill="#8b949e" font-size="10">:8080 internal</text>
+  </g>
+
+  <!-- NATS Broker -->
+  <g transform="translate(330,432)">
+    <rect width="200" height="52" rx="8" fill="#1c2333" stroke="#E67E22" stroke-width="1.5"/>
+    <text x="100" y="22" text-anchor="middle" fill="#E67E22" font-weight="700" font-size="13">NATS Broker</text>
+    <text x="100" y="38" text-anchor="middle" fill="#8b949e" font-size="10">order.created · account.created</text>
+    <text x="100" y="50" text-anchor="middle" fill="#8b949e" font-size="10">product.updated · :4222</text>
+  </g>
+
+  <!-- Account → NATS (pub) -->
+  <line x1="170" y1="378" x2="340" y2="437" stroke="#E67E22" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow-orange)"/>
+  <rect x="176" y="396" width="104" height="14" rx="3" fill="#0d1117"/>
+  <text x="228" y="407" text-anchor="middle" fill="#E67E22" font-size="10">pub: account.created</text>
+
+  <!-- Order → NATS (pub) -->
+  <line x1="690" y1="378" x2="520" y2="437" stroke="#E67E22" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow-orange)"/>
+  <rect x="560" y="396" width="104" height="14" rx="3" fill="#0d1117"/>
+  <text x="612" y="407" text-anchor="middle" fill="#E67E22" font-size="10">pub: order.created</text>
+
+  <!-- Catalog → NATS (pub) -->
+  <line x1="430" y1="378" x2="430" y2="432" stroke="#E67E22" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow-orange)"/>
+  <rect x="436" y="396" width="104" height="14" rx="3" fill="#0d1117"/>
+  <text x="488" y="407" text-anchor="middle" fill="#E67E22" font-size="10">pub: product.updated</text>
+
+  <!-- NATS → Account (sub) -->
+  <path d="M340,458 Q240,475 175,442" fill="none" stroke="#E67E22" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow-orange)"/>
+  <rect x="196" y="460" width="104" height="14" rx="3" fill="#0d1117"/>
+  <text x="248" y="471" text-anchor="middle" fill="#E67E22" font-size="10">sub: order.created</text>
+
+  <!-- Account → PostgreSQL -->
+  <line x1="170" y1="378" x2="110" y2="530" stroke="#888" stroke-width="1.5" marker-end="url(#arrow-gray)"/>
+  <rect x="46" y="500" width="52" height="14" rx="3" fill="#0d1117"/>
+  <text x="72" y="511" text-anchor="middle" fill="#888" font-size="10">lib/pq</text>
+
+  <!-- Catalog → Elasticsearch -->
+  <line x1="430" y1="378" x2="430" y2="530" stroke="#888" stroke-width="1.5" marker-end="url(#arrow-gray)"/>
+  <rect x="380" y="500" width="102" height="14" rx="3" fill="#0d1117"/>
+  <text x="431" y="511" text-anchor="middle" fill="#888" font-size="10">olivere/elastic</text>
+
+  <!-- Order → MongoDB -->
+  <line x1="690" y1="378" x2="720" y2="530" stroke="#888" stroke-width="1.5" marker-end="url(#arrow-gray)"/>
+  <rect x="690" y="500" width="76" height="14" rx="3" fill="#0d1117"/>
+  <text x="728" y="511" text-anchor="middle" fill="#888" font-size="10">mongo-driver</text>
+
+  <!-- PostgreSQL -->
+  <g transform="translate(30,530)">
+    <rect width="160" height="56" rx="8" fill="#161b22" stroke="#555" stroke-width="1.5"/>
+    <text x="80" y="20" text-anchor="middle" fill="#e6edf3" font-weight="700" font-size="12">PostgreSQL</text>
+    <text x="80" y="36" text-anchor="middle" fill="#8b949e" font-size="10">accounts table</text>
+    <text x="80" y="50" text-anchor="middle" fill="#8b949e" font-size="10">account_db</text>
+  </g>
+
+  <!-- Elasticsearch -->
+  <g transform="translate(330,530)">
+    <rect width="200" height="56" rx="8" fill="#161b22" stroke="#555" stroke-width="1.5"/>
+    <text x="100" y="20" text-anchor="middle" fill="#e6edf3" font-weight="700" font-size="12">Elasticsearch 7</text>
+    <text x="100" y="36" text-anchor="middle" fill="#8b949e" font-size="10">product index · full-text search</text>
+    <text x="100" y="50" text-anchor="middle" fill="#8b949e" font-size="10">catalog_db</text>
+  </g>
+
+  <!-- MongoDB -->
+  <g transform="translate(640,530)">
+    <rect width="180" height="56" rx="8" fill="#161b22" stroke="#555" stroke-width="1.5"/>
+    <text x="90" y="20" text-anchor="middle" fill="#e6edf3" font-weight="700" font-size="12">MongoDB 7</text>
+    <text x="90" y="36" text-anchor="middle" fill="#8b949e" font-size="10">orders collection</text>
+    <text x="90" y="50" text-anchor="middle" fill="#8b949e" font-size="10">order_db</text>
+  </g>
+</svg>

@@ -8,12 +8,9 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY events events
-COPY account account
-COPY catalog catalog
 COPY order order
-COPY graphql graphql
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /go/bin/app ./graphql/cmd/graphql
+RUN CGO_ENABLED=0 GOOS=linux go build -o /go/bin/app ./order/cmd/order
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates

@@ -2,14 +2,11 @@ package account
 
 import (
 	"context"
+	"log"
+
+	"github.com/JawadMM/ecomm/events"
 	"github.com/segmentio/ksuid"
 )
-
-type Service struct {
-	PostAccount  func(ctx context.Context, account *Account) (*Account, error)
-	GetAccount   func(ctx context.Context, id string) (*Account, error)
-	ListAccounts func(ctx context.Context, skip uint64, limit uint64) ([]Account, error)
-}
 
 type Account struct {
 	ID   string `json:"id"`
@@ -18,10 +15,11 @@ type Account struct {
 
 type AccountService struct {
 	repository Repository
+	publisher  *events.Publisher
 }
 
-func NewService(repository Repository) *AccountService {
-	return &AccountService{repository: repository}
+func NewService(repository Repository, pub *events.Publisher) *AccountService {
+	return &AccountService{repository: repository, publisher: pub}
 }
 
 func (s *AccountService) PostAccount(ctx context.Context, name string) (*Account, error) {
@@ -32,7 +30,13 @@ func (s *AccountService) PostAccount(ctx context.Context, name string) (*Account
 	if err := s.repository.PutAccount(ctx, account); err != nil {
 		return nil, err
 	}
-
+	if s.publisher != nil {
+		s.publisher.Publish(events.SubjectAccountCreated, events.AccountCreatedEvent{
+			ID:   account.ID,
+			Name: account.Name,
+		})
+		log.Printf("[NATS pub] account.created — id=%s name=%s", account.ID, account.Name)
+	}
 	return account, nil
 }
 
@@ -41,7 +45,7 @@ func (s *AccountService) GetAccount(ctx context.Context, id string) (*Account, e
 }
 
 func (s *AccountService) ListAccounts(ctx context.Context, skip uint64, take uint64) ([]Account, error) {
-	if take > 100  || (skip ==0 && take == 0) {
+	if take > 100 || (skip == 0 && take == 0) {
 		take = 100
 	}
 	return s.repository.ListAccounts(ctx, skip, take)
