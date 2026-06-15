@@ -67,6 +67,7 @@ func (r *queryResolver) Products(ctx context.Context, pagination *PaginationInpu
 			Name:        p.Name,
 			Description: p.Description,
 			Price:       p.Price,
+			Stock:       int(p.Stock),
 		}
 	}
 	return result, nil

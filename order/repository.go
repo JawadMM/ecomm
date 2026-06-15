@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -12,6 +13,7 @@ type Repository interface {
 	Close(ctx context.Context)
 	PutOrder(ctx context.Context, o Order) error
 	GetOrdersForAccount(ctx context.Context, accountID string) ([]Order, error)
+	HasRecentOrder(ctx context.Context, accountID string, since time.Time) (bool, error)
 }
 
 type mongoRepository struct {
@@ -36,11 +38,11 @@ func (r *mongoRepository) Close(ctx context.Context) {
 
 func (r *mongoRepository) PutOrder(ctx context.Context, o Order) error {
 	_, err := r.collection.InsertOne(ctx, bson.M{
-		"_id":        o.ID,
-		"created_at": o.CreatedAt,
-		"account_id": o.AccountID,
+		"_id":         o.ID,
+		"created_at":  o.CreatedAt,
+		"account_id":  o.AccountID,
 		"total_price": o.TotalPrice,
-		"products":   o.Products,
+		"products":    o.Products,
 	})
 	return err
 }
@@ -57,4 +59,12 @@ func (r *mongoRepository) GetOrdersForAccount(ctx context.Context, accountID str
 		return nil, err
 	}
 	return orders, nil
+}
+
+func (r *mongoRepository) HasRecentOrder(ctx context.Context, accountID string, since time.Time) (bool, error) {
+	count, err := r.collection.CountDocuments(ctx, bson.M{
+		"account_id": accountID,
+		"created_at": bson.M{"$gte": since},
+	})
+	return count > 0, err
 }

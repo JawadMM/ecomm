@@ -47,9 +47,11 @@ services:
     environment:
       DATABASE_URL: mongodb://order_db:27017/orders_db
       NATS_URL: nats://nats:4222
+      CATALOG_SERVICE_URL: catalog:8080
     depends_on:
       - order_db
       - nats
+      - catalog
     restart: on-failure
 
   order_db:

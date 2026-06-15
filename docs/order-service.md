@@ -1,6 +1,6 @@
 # Order Service
 
-Handles order creation and retrieval. Stores orders with embedded product snapshots so order history is preserved even if catalog prices change. Exposes a gRPC API consumed by the GraphQL gateway.
+Handles order creation and retrieval. Stores orders with embedded product snapshots so order history is preserved even if catalog prices change. Before persisting an order, the service verifies stock availability with the Catalog Service and enforces a per-account deduplication window. Exposes a gRPC API consumed by the GraphQL gateway.
 
 ## Data Models
 
@@ -136,6 +136,8 @@ Each `Order` contains the full product snapshot stored at order creation time.
 - **Total price:** Calculated as `Σ (product.price × product.quantity)` over all products in the request.
 - **Product snapshot:** Full product details (name, description, price) are copied into the order document at creation time, decoupling order history from future catalog changes.
 - **No pagination** on `GetOrdersForAccount` — all orders for an account are returned in a single response.
+- **Duplicate order prevention:** If the same account already has an order created within the last 60 seconds, `PostOrder` returns an error. This is enforced via a MongoDB `CountDocuments` query before insertion.
+- **Stock check & deduction:** Before persisting the order, the service calls `Catalog.DecreaseStock` for each product in the order. If any product has insufficient stock, all already-decremented quantities are restored via `Catalog.IncreaseStock` (compensating transaction) and the error is returned. If the Catalog Service URL is not configured, stock checking is skipped.
 
 ---
 
@@ -159,12 +161,14 @@ _(none)_
 |----------|-------------|---------|
 | `DATABASE_URL` | MongoDB connection string | `mongodb://order_db:27017/orders_db` |
 | `NATS_URL` | NATS broker URL | `nats://nats:4222` |
+| `CATALOG_SERVICE_URL` | gRPC address of the Catalog Service | `catalog:8080` |
 
 ---
 
 ## Startup Behavior
 
-1. Reads `DATABASE_URL` and `NATS_URL` from environment.
+1. Reads `DATABASE_URL`, `NATS_URL`, and `CATALOG_SERVICE_URL` from environment.
 2. Connects to MongoDB, retrying every 2 seconds until successful.
 3. Connects to NATS for event publishing (optional; service starts even if NATS is unavailable).
-4. Starts the gRPC server on `:8080`.
+4. If `CATALOG_SERVICE_URL` is set, connects to the Catalog Service gRPC server, retrying every 2 seconds until successful. Stock checking is disabled if the URL is not set.
+5. Starts the gRPC server on `:8080`.

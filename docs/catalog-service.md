@@ -1,6 +1,6 @@
 # Catalog Service
 
-Manages the product catalog and provides full-text product search. Exposes a gRPC API consumed by the GraphQL gateway.
+Manages the product catalog and provides full-text product search. Exposes a gRPC API consumed by the GraphQL gateway and by the Order Service for stock management.
 
 ## Data Model
 
@@ -10,6 +10,7 @@ type Product struct {
     Name        string
     Description string
     Price       float64
+    Stock       uint32  // available units
 }
 ```
 
@@ -28,7 +29,8 @@ type Product struct {
   "_id": "<ksuid>",
   "name": "string",
   "description": "string",
-  "price": 0.0
+  "price": 0.0,
+  "stock": 0
 }
 ```
 
@@ -44,9 +46,11 @@ The document `_id` is the product's KSUID. Elasticsearch handles indexing automa
 
 ```protobuf
 service CatalogService {
-  rpc PostProduct  (PostProductRequest)  returns (PostProductResponse);
-  rpc GetProduct   (GetProductRequest)   returns (GetProductResponse);
-  rpc GetProducts  (GetProductsRequest)  returns (GetProductsResponse);
+  rpc PostProduct   (PostProductRequest)   returns (PostProductResponse);
+  rpc GetProduct    (GetProductRequest)    returns (GetProductResponse);
+  rpc GetProducts   (GetProductsRequest)   returns (GetProductsResponse);
+  rpc DecreaseStock (DecreaseStockRequest) returns (DecreaseStockResponse);
+  rpc IncreaseStock (IncreaseStockRequest) returns (IncreaseStockResponse);
 }
 ```
 
@@ -63,6 +67,7 @@ Creates a new product in the catalog.
 | `name` | `string` | Product name |
 | `description` | `string` | Product description (full-text indexed) |
 | `price` | `double` | Unit price |
+| `stock` | `uint32` | Initial available units |
 
 **Response**
 
@@ -78,6 +83,7 @@ Creates a new product in the catalog.
 | `name` | `string` |
 | `description` | `string` |
 | `price` | `double` |
+| `stock` | `uint32` |
 
 ---
 
@@ -128,12 +134,53 @@ A multipurpose endpoint that handles three distinct access patterns based on whi
 
 ---
 
+### `DecreaseStock`
+
+Atomically checks and decrements stock for a product. Called by the Order Service before persisting a new order.
+
+**Request**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `product_id` | `string` | KSUID of the product |
+| `quantity` | `uint32` | Units to deduct |
+
+**Response**
+
+| Field | Type |
+|-------|------|
+| `product` | `Product` (updated stock) |
+
+**Error:** Returns an error if `stock < quantity` (insufficient stock). The update is performed atomically via an Elasticsearch Painless script — no separate read is needed before decrementing.
+
+---
+
+### `IncreaseStock`
+
+Unconditionally increments stock for a product. Used by the Order Service as a compensation step when a partial stock-decrease needs to be rolled back.
+
+**Request**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `product_id` | `string` | KSUID of the product |
+| `quantity` | `uint32` | Units to restore |
+
+**Response**
+
+| Field | Type |
+|-------|------|
+| `product` | `Product` (updated stock) |
+
+---
+
 ## Business Rules
 
 - Pagination is capped at 100 results per request; if `take` is `0` or exceeds `100`, it is clamped to `100`.
 - Full-text search uses Elasticsearch's `multi_match` query across both `name` and `description` fields.
 - Batch-by-IDs uses Elasticsearch's `mget` API for efficient parallel document retrieval.
 - IDs are generated server-side using KSUID; callers do not supply IDs.
+- `DecreaseStock` uses an Elasticsearch scripted update (Painless), making the check-and-decrement atomic. A `noop` result (stock was already insufficient) is surfaced as an error to the caller.
 
 ---
 

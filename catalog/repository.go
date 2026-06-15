@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/olivere/elastic/v7"
@@ -15,6 +16,8 @@ type Respository interface {
 	ListProducts(ctx context.Context, skip uint64, take uint64) ([]Product, error)
 	ListProductsWithIds(ctx context.Context, ids []string) ([]Product, error)
 	SearchProducts(ctx context.Context, query string, skip uint64, take uint64) ([]Product, error)
+	DecreaseStock(ctx context.Context, id string, quantity uint32) (*Product, error)
+	IncreaseStock(ctx context.Context, id string, quantity uint32) (*Product, error)
 }
 
 type elasticRepository struct {
@@ -25,6 +28,7 @@ type productDocument struct {
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
 	Price       float64 `json:"price"`
+	Stock       uint32  `json:"stock"`
 }
 
 func NewElasticRespository(url string) (*elasticRepository, error) {
@@ -50,6 +54,7 @@ func (r *elasticRepository) PutProduct(ctx context.Context, product *Product) (*
 			Name:        product.Name,
 			Description: product.Description,
 			Price:       product.Price,
+			Stock:       product.Stock,
 		}).
 		Do(ctx)
 	if err != nil {
@@ -79,6 +84,7 @@ func (r *elasticRepository) GetProduct(ctx context.Context, id string) (*Product
 		Name:        doc.Name,
 		Description: doc.Description,
 		Price:       doc.Price,
+		Stock:       doc.Stock,
 	}, nil
 }
 
@@ -100,6 +106,7 @@ func (r *elasticRepository) ListProducts(ctx context.Context, skip uint64, take 
 				Name:        doc.Name,
 				Description: doc.Description,
 				Price:       doc.Price,
+				Stock:       doc.Stock,
 			})
 		}
 
@@ -132,6 +139,7 @@ func (r *elasticRepository) ListProductsWithIds(ctx context.Context, ids []strin
 					Name:        doc.Name,
 					Description: doc.Description,
 					Price:       doc.Price,
+					Stock:       doc.Stock,
 				})
 			}
 		}
@@ -159,8 +167,47 @@ func (r *elasticRepository) SearchProducts(ctx context.Context, query string, sk
 				Name:        doc.Name,
 				Description: doc.Description,
 				Price:       doc.Price,
+				Stock:       doc.Stock,
 			})
 		}
 	}
 	return products, nil
+}
+
+func (r *elasticRepository) DecreaseStock(ctx context.Context, id string, quantity uint32) (*Product, error) {
+	script := elastic.NewScript(`
+		if (ctx._source.stock >= params.quantity) {
+			ctx._source.stock -= params.quantity
+		} else {
+			ctx.op = 'none'
+		}
+	`).Param("quantity", int(quantity))
+
+	res, err := r.client.Update().
+		Index("product").
+		Id(id).
+		Script(script).
+		Do(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if res.Result == "noop" {
+		return nil, fmt.Errorf("insufficient stock for product %s", id)
+	}
+	return r.GetProduct(ctx, id)
+}
+
+func (r *elasticRepository) IncreaseStock(ctx context.Context, id string, quantity uint32) (*Product, error) {
+	script := elastic.NewScript(`ctx._source.stock += params.quantity`).
+		Param("quantity", int(quantity))
+
+	_, err := r.client.Update().
+		Index("product").
+		Id(id).
+		Script(script).
+		Do(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return r.GetProduct(ctx, id)
 }

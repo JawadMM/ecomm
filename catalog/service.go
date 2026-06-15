@@ -9,11 +9,13 @@ import (
 )
 
 type Service interface {
-	PostProduct(ctx context.Context, name, description string, price float64) (*Product, error)
+	PostProduct(ctx context.Context, name, description string, price float64, stock uint32) (*Product, error)
 	GetProduct(ctx context.Context, id string) (*Product, error)
 	GetProducts(ctx context.Context, skip uint64, take uint64) ([]Product, error)
 	GetProductsByIds(ctx context.Context, ids []string) ([]Product, error)
 	SearchProducts(ctx context.Context, query string, skip uint64, take uint64) ([]Product, error)
+	DecreaseStock(ctx context.Context, id string, quantity uint32) (*Product, error)
+	IncreaseStock(ctx context.Context, id string, quantity uint32) (*Product, error)
 }
 
 type Product struct {
@@ -21,6 +23,7 @@ type Product struct {
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
 	Price       float64 `json:"price"`
+	Stock       uint32  `json:"stock"`
 }
 
 type catalogService struct {
@@ -32,12 +35,13 @@ func NewService(repository Respository, pub *events.Publisher) *catalogService {
 	return &catalogService{repository: repository, publisher: pub}
 }
 
-func (s *catalogService) PostProduct(ctx context.Context, name, description string, price float64) (*Product, error) {
+func (s *catalogService) PostProduct(ctx context.Context, name, description string, price float64, stock uint32) (*Product, error) {
 	product := &Product{
 		ID:          ksuid.New().String(),
 		Name:        name,
 		Description: description,
 		Price:       price,
+		Stock:       stock,
 	}
 	product, err := s.repository.PutProduct(ctx, product)
 	if err != nil {
@@ -75,4 +79,12 @@ func (s *catalogService) SearchProducts(ctx context.Context, query string, skip 
 		take = 100
 	}
 	return s.repository.SearchProducts(ctx, query, skip, take)
+}
+
+func (s *catalogService) DecreaseStock(ctx context.Context, id string, quantity uint32) (*Product, error) {
+	return s.repository.DecreaseStock(ctx, id, quantity)
+}
+
+func (s *catalogService) IncreaseStock(ctx context.Context, id string, quantity uint32) (*Product, error) {
+	return s.repository.IncreaseStock(ctx, id, quantity)
 }
