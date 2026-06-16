@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/JawadMM/ecomm/catalog"
 	"github.com/JawadMM/ecomm/events"
 	"github.com/JawadMM/ecomm/order"
 	"github.com/kelseyhightower/envconfig"
@@ -12,8 +13,9 @@ import (
 )
 
 type config struct {
-	DatabaseURL string `envconfig:"DATABASE_URL"`
-	NatsURL     string `envconfig:"NATS_URL"`
+	DatabaseURL       string `envconfig:"DATABASE_URL"`
+	NatsURL           string `envconfig:"NATS_URL"`
+	CatalogServiceURL string `envconfig:"CATALOG_SERVICE_URL"`
 }
 
 func main() {
@@ -44,7 +46,22 @@ func main() {
 		log.Println("Connected to NATS")
 	}
 
+	var sc order.StockClient
+	if cfg.CatalogServiceURL != "" {
+		var catalogClient *catalog.Client
+		retry.ForeverSleep(2*time.Second, func(_ int) (err error) {
+			catalogClient, err = catalog.NewClient(cfg.CatalogServiceURL)
+			if err != nil {
+				log.Printf("Failed to connect to catalog service: %v. Retrying...", err)
+			}
+			return
+		})
+		defer catalogClient.Close()
+		sc = catalogClient
+		log.Println("Connected to catalog service")
+	}
+
 	log.Println("Listening on port 8080...")
-	s := order.NewService(r, pub)
+	s := order.NewService(r, pub, sc)
 	log.Fatal(order.ListenGRPC(s, 8080))
 }

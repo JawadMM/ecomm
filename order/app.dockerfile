@@ -8,6 +8,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY events events
+COPY catalog catalog
 COPY order order
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /go/bin/app ./order/cmd/order

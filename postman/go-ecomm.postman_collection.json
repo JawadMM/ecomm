@@ -1,0 +1,486 @@
+{
+  "info": {
+    "_postman_id": "8f3c2a1e-4d6b-4a9c-9e2f-1b7c5d8a0f31",
+    "name": "go-ecomm GraphQL API",
+    "description": "All requests for the go-ecomm microservices platform. Every operation is sent to the single GraphQL gateway at {{baseUrl}}/graphql (POST). Folders are grouped by service: Account, Catalog, Order.\n\nThe `Create Account`, `Create Product`, and `Create Order` requests automatically capture the returned `id` into collection variables (`accountId`, `productId`, `orderId`) via test scripts, so you can run them in order and the Get requests will just work.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "accountId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Account",
+      "item": [
+        {
+          "name": "Create Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.createAccount) {",
+                  "    pm.collectionVariables.set('accountId', json.data.createAccount.id);",
+                  "    pm.test('account created', () => pm.expect(json.data.createAccount.id).to.be.a('string'));",
+                  "} else {",
+                  "    pm.test('no errors', () => pm.expect(json.errors, JSON.stringify(json.errors)).to.be.undefined);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation CreateAccount($input: AccountInput!) {\n  createAccount(input: $input) {\n    id\n    name\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"name\": \"Jane Doe\"\n  }\n}"
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Creates a new account. Captures the returned id into the `accountId` collection variable."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "graphql",
+                  "graphql": {
+                    "query": "mutation CreateAccount($input: AccountInput!) {\n  createAccount(input: $input) {\n    id\n    name\n  }\n}",
+                    "variables": "{\n  \"input\": {\n    \"name\": \"Jane Doe\"\n  }\n}"
+                  }
+                },
+                "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"createAccount\": {\n      \"id\": \"2abc1Defg3hIJklMnoPQrsTuVwx\",\n      \"name\": \"Jane Doe\"\n    }\n  }\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Get Accounts (list)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query GetAccounts($pagination: PaginationInput) {\n  accounts(pagination: $pagination) {\n    id\n    name\n  }\n}",
+                "variables": "{\n  \"pagination\": {\n    \"skip\": 0,\n    \"take\": 100\n  }\n}"
+              }
+            },
+            "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] },
+            "description": "Lists accounts with pagination."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "graphql",
+                  "graphql": {
+                    "query": "query GetAccounts($pagination: PaginationInput) {\n  accounts(pagination: $pagination) {\n    id\n    name\n  }\n}",
+                    "variables": "{\n  \"pagination\": {\n    \"skip\": 0,\n    \"take\": 100\n  }\n}"
+                  }
+                },
+                "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"accounts\": [\n      {\n        \"id\": \"2abc1Defg3hIJklMnoPQrsTuVwx\",\n        \"name\": \"Jane Doe\"\n      }\n    ]\n  }\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Get Account by ID (with orders)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query GetAccount($id: String!) {\n  accounts(id: $id) {\n    id\n    name\n    orders {\n      id\n      createdAt\n      totalPrice\n      products {\n        id\n        name\n        description\n        price\n        quantity\n      }\n    }\n  }\n}",
+                "variables": "{\n  \"id\": \"{{accountId}}\"\n}"
+              }
+            },
+            "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] },
+            "description": "Fetches a single account by id, including all of its orders (resolved via Order.GetOrdersForAccount)."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "graphql",
+                  "graphql": {
+                    "query": "query GetAccount($id: String!) {\n  accounts(id: $id) {\n    id\n    name\n    orders {\n      id\n      createdAt\n      totalPrice\n      products {\n        id\n        name\n        description\n        price\n        quantity\n      }\n    }\n  }\n}",
+                    "variables": "{\n  \"id\": \"{{accountId}}\"\n}"
+                  }
+                },
+                "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"accounts\": [\n      {\n        \"id\": \"2abc1Defg3hIJklMnoPQrsTuVwx\",\n        \"name\": \"Jane Doe\",\n        \"orders\": [\n          {\n            \"id\": \"2def4Ghij6kLMnoPQrsTUvwXyz0\",\n            \"createdAt\": \"2026-06-16T12:00:00Z\",\n            \"totalPrice\": 89.97,\n            \"products\": [\n              {\n                \"id\": \"2ghi7Jklm9nOPQrsTUvwXYz1234\",\n                \"name\": \"Widget\",\n                \"description\": \"A useful widget\",\n                \"price\": 29.99,\n                \"quantity\": 3\n              }\n            ]\n          }\n        ]\n      }\n    ]\n  }\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Catalog",
+      "item": [
+        {
+          "name": "Create Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.createProduct) {",
+                  "    pm.collectionVariables.set('productId', json.data.createProduct.id);",
+                  "    pm.test('product created', () => pm.expect(json.data.createProduct.id).to.be.a('string'));",
+                  "} else {",
+                  "    pm.test('no errors', () => pm.expect(json.errors, JSON.stringify(json.errors)).to.be.undefined);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation CreateProduct($input: ProductInput!) {\n  createProduct(input: $input) {\n    id\n    name\n    description\n    price\n    stock\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"name\": \"Widget\",\n    \"description\": \"A useful widget for everyday tasks\",\n    \"price\": 29.99,\n    \"stock\": 100\n  }\n}"
+              }
+            },
+            "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] },
+            "description": "Creates a new product with an initial stock level. Captures the returned id into the `productId` collection variable."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "graphql",
+                  "graphql": {
+                    "query": "mutation CreateProduct($input: ProductInput!) {\n  createProduct(input: $input) {\n    id\n    name\n    description\n    price\n    stock\n  }\n}",
+                    "variables": "{\n  \"input\": {\n    \"name\": \"Widget\",\n    \"description\": \"A useful widget for everyday tasks\",\n    \"price\": 29.99,\n    \"stock\": 100\n  }\n}"
+                  }
+                },
+                "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"createProduct\": {\n      \"id\": \"2ghi7Jklm9nOPQrsTUvwXYz1234\",\n      \"name\": \"Widget\",\n      \"description\": \"A useful widget for everyday tasks\",\n      \"price\": 29.99,\n      \"stock\": 100\n    }\n  }\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Get Products (list)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query GetProducts($pagination: PaginationInput) {\n  products(pagination: $pagination) {\n    id\n    name\n    description\n    price\n    stock\n  }\n}",
+                "variables": "{\n  \"pagination\": {\n    \"skip\": 0,\n    \"take\": 100\n  }\n}"
+              }
+            },
+            "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] },
+            "description": "Lists products with pagination."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "graphql",
+                  "graphql": {
+                    "query": "query GetProducts($pagination: PaginationInput) {\n  products(pagination: $pagination) {\n    id\n    name\n    description\n    price\n    stock\n  }\n}",
+                    "variables": "{\n  \"pagination\": {\n    \"skip\": 0,\n    \"take\": 100\n  }\n}"
+                  }
+                },
+                "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"products\": [\n      {\n        \"id\": \"2ghi7Jklm9nOPQrsTUvwXYz1234\",\n        \"name\": \"Widget\",\n        \"description\": \"A useful widget for everyday tasks\",\n        \"price\": 29.99,\n        \"stock\": 100\n      }\n    ]\n  }\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Get Product by ID",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query GetProduct($id: String!) {\n  products(id: $id) {\n    id\n    name\n    description\n    price\n    stock\n  }\n}",
+                "variables": "{\n  \"id\": \"{{productId}}\"\n}"
+              }
+            },
+            "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] },
+            "description": "Fetches a single product by id."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "graphql",
+                  "graphql": {
+                    "query": "query GetProduct($id: String!) {\n  products(id: $id) {\n    id\n    name\n    description\n    price\n    stock\n  }\n}",
+                    "variables": "{\n  \"id\": \"{{productId}}\"\n}"
+                  }
+                },
+                "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"products\": [\n      {\n        \"id\": \"2ghi7Jklm9nOPQrsTUvwXYz1234\",\n        \"name\": \"Widget\",\n        \"description\": \"A useful widget for everyday tasks\",\n        \"price\": 29.99,\n        \"stock\": 100\n      }\n    ]\n  }\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Search Products",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query SearchProducts($query: String!) {\n  products(query: $query) {\n    id\n    name\n    description\n    price\n    stock\n  }\n}",
+                "variables": "{\n  \"query\": \"widget\"\n}"
+              }
+            },
+            "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] },
+            "description": "Full-text search across product name and description (Elasticsearch multi-match)."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "graphql",
+                  "graphql": {
+                    "query": "query SearchProducts($query: String!) {\n  products(query: $query) {\n    id\n    name\n    description\n    price\n    stock\n  }\n}",
+                    "variables": "{\n  \"query\": \"widget\"\n}"
+                  }
+                },
+                "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"products\": [\n      {\n        \"id\": \"2ghi7Jklm9nOPQrsTUvwXYz1234\",\n        \"name\": \"Widget\",\n        \"description\": \"A useful widget for everyday tasks\",\n        \"price\": 29.99,\n        \"stock\": 100\n      }\n    ]\n  }\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Order",
+      "item": [
+        {
+          "name": "Create Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.createOrder) {",
+                  "    pm.collectionVariables.set('orderId', json.data.createOrder.id);",
+                  "    pm.test('order created', () => pm.expect(json.data.createOrder.id).to.be.a('string'));",
+                  "} else {",
+                  "    pm.test('no errors', () => pm.expect(json.errors, JSON.stringify(json.errors)).to.be.undefined);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation CreateOrder($input: OrderInput!) {\n  createOrder(input: $input) {\n    id\n    createdAt\n    totalPrice\n    products {\n      id\n      name\n      description\n      price\n      quantity\n    }\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"accountId\": \"{{accountId}}\",\n    \"products\": [\n      {\n        \"id\": \"{{productId}}\",\n        \"quantity\": 3\n      }\n    ]\n  }\n}"
+              }
+            },
+            "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] },
+            "description": "Places an order for the account. The Order service decrements catalog stock and rejects duplicate (identical-content) orders within a 60-second window. Uses the `accountId` and `productId` captured by the Create Account / Create Product requests."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "graphql",
+                  "graphql": {
+                    "query": "mutation CreateOrder($input: OrderInput!) {\n  createOrder(input: $input) {\n    id\n    createdAt\n    totalPrice\n    products {\n      id\n      name\n      description\n      price\n      quantity\n    }\n  }\n}",
+                    "variables": "{\n  \"input\": {\n    \"accountId\": \"{{accountId}}\",\n    \"products\": [\n      {\n        \"id\": \"{{productId}}\",\n        \"quantity\": 3\n      }\n    ]\n  }\n}"
+                  }
+                },
+                "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"createOrder\": {\n      \"id\": \"2def4Ghij6kLMnoPQrsTUvwXyz0\",\n      \"createdAt\": \"2026-06-16T12:00:00Z\",\n      \"totalPrice\": 89.97,\n      \"products\": [\n        {\n          \"id\": \"2ghi7Jklm9nOPQrsTUvwXYz1234\",\n          \"name\": \"Widget\",\n          \"description\": \"A useful widget for everyday tasks\",\n          \"price\": 29.99,\n          \"quantity\": 3\n        }\n      ]\n    }\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "Duplicate Order (rejected)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "graphql",
+                  "graphql": {
+                    "query": "mutation CreateOrder($input: OrderInput!) {\n  createOrder(input: $input) {\n    id\n  }\n}",
+                    "variables": "{\n  \"input\": {\n    \"accountId\": \"{{accountId}}\",\n    \"products\": [\n      {\n        \"id\": \"{{productId}}\",\n        \"quantity\": 3\n      }\n    ]\n  }\n}"
+                  }
+                },
+                "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"errors\": [\n    {\n      \"message\": \"duplicate order: an identical order was already placed within the last minute for this account\",\n      \"path\": [\n        \"createOrder\"\n      ]\n    }\n  ],\n  \"data\": null\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "Insufficient Stock (rejected)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "graphql",
+                  "graphql": {
+                    "query": "mutation CreateOrder($input: OrderInput!) {\n  createOrder(input: $input) {\n    id\n  }\n}",
+                    "variables": "{\n  \"input\": {\n    \"accountId\": \"{{accountId}}\",\n    \"products\": [\n      {\n        \"id\": \"{{productId}}\",\n        \"quantity\": 99999\n      }\n    ]\n  }\n}"
+                  }
+                },
+                "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"errors\": [\n    {\n      \"message\": \"insufficient stock for product 2ghi7Jklm9nOPQrsTUvwXYz1234\",\n      \"path\": [\n        \"createOrder\"\n      ]\n    }\n  ],\n  \"data\": null\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Get Orders for Account",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query GetOrders($id: String!) {\n  accounts(id: $id) {\n    id\n    name\n    orders {\n      id\n      createdAt\n      totalPrice\n      products {\n        id\n        name\n        description\n        price\n        quantity\n      }\n    }\n  }\n}",
+                "variables": "{\n  \"id\": \"{{accountId}}\"\n}"
+              }
+            },
+            "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] },
+            "description": "Orders are retrieved through the owning account's `orders` field (the gateway calls Order.GetOrdersForAccount). There is no standalone get-order-by-id endpoint."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "graphql",
+                  "graphql": {
+                    "query": "query GetOrders($id: String!) {\n  accounts(id: $id) {\n    id\n    name\n    orders {\n      id\n      createdAt\n      totalPrice\n      products {\n        id\n        name\n        description\n        price\n        quantity\n      }\n    }\n  }\n}",
+                    "variables": "{\n  \"id\": \"{{accountId}}\"\n}"
+                  }
+                },
+                "url": { "raw": "{{baseUrl}}/graphql", "host": ["{{baseUrl}}"], "path": ["graphql"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"accounts\": [\n      {\n        \"id\": \"2abc1Defg3hIJklMnoPQrsTuVwx\",\n        \"name\": \"Jane Doe\",\n        \"orders\": [\n          {\n            \"id\": \"2def4Ghij6kLMnoPQrsTUvwXyz0\",\n            \"createdAt\": \"2026-06-16T12:00:00Z\",\n            \"totalPrice\": 89.97,\n            \"products\": [\n              {\n                \"id\": \"2ghi7Jklm9nOPQrsTUvwXYz1234\",\n                \"name\": \"Widget\",\n                \"description\": \"A useful widget for everyday tasks\",\n                \"price\": 29.99,\n                \"quantity\": 3\n              }\n            ]\n          }\n        ]\n      }\n    ]\n  }\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

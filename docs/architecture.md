@@ -14,7 +14,7 @@ go-ecomm is a microservices platform built around three principles:
 
 ## Synchronous Communication (gRPC)
 
-The GraphQL gateway is the only service that initiates synchronous calls. It holds one gRPC client per backend service and fans out calls based on the incoming GraphQL operation.
+The GraphQL gateway is the primary initiator of synchronous calls. The Order Service also calls the Catalog Service directly to check and decrement stock during order creation.
 
 ```
 Client
@@ -24,15 +24,18 @@ GraphQL Gateway
   ├── account.Client  ──gRPC──► Account Service  :8080
   ├── catalog.Client  ──gRPC──► Catalog Service  :8080
   └── order.Client    ──gRPC──► Order Service    :8080
+                                      │
+                                      └──gRPC──► Catalog Service  :8080
+                                                 (DecreaseStock / IncreaseStock)
 ```
 
 ### Service addresses (Docker Compose)
 
-| Client env var | Value |
-|----------------|-------|
-| `ACCOUNT_SERVICE_URL` | `account:8080` |
-| `CATALOG_SERVICE_URL` | `catalog:8080` |
-| `ORDER_SERVICE_URL` | `order:8080` |
+| Client env var | Used by | Value |
+|----------------|---------|-------|
+| `ACCOUNT_SERVICE_URL` | GraphQL | `account:8080` |
+| `CATALOG_SERVICE_URL` | GraphQL, Order | `catalog:8080` |
+| `ORDER_SERVICE_URL` | GraphQL | `order:8080` |
 
 Backend services are **not** exposed on the host network. Only the GraphQL gateway's port 8080 is published.
 
@@ -102,7 +105,8 @@ CREATE TABLE accounts (
   "_id": "<ksuid>",
   "name": "string",
   "description": "string",
-  "price": 0.0
+  "price": 0.0,
+  "stock": 0
 }
 ```
 
@@ -172,7 +176,7 @@ Common variables:
 | `DATABASE_URL` | Account, Catalog, Order | Connection string for the service's database |
 | `NATS_URL` | Account, Catalog, Order | NATS broker URL (e.g. `nats://nats:4222`) |
 | `ACCOUNT_SERVICE_URL` | GraphQL | gRPC address of Account Service |
-| `CATALOG_SERVICE_URL` | GraphQL | gRPC address of Catalog Service |
+| `CATALOG_SERVICE_URL` | GraphQL, Order | gRPC address of Catalog Service |
 | `ORDER_SERVICE_URL` | GraphQL | gRPC address of Order Service |
 
 ---
@@ -181,9 +185,12 @@ Common variables:
 
 1. Client sends `POST /graphql` with the `createOrder` mutation.
 2. GraphQL gateway parses the mutation and calls `mutationResolver.CreateOrder`.
-3. Resolver calls `orderClient.PostOrder(ctx, accountID, products)` — a gRPC call to Order Service.
-4. Order Service generates a KSUID, calculates `totalPrice`, persists the order to MongoDB.
-5. Order Service publishes an `order.created` event to NATS.
-6. Order Service returns the new `Order` to the GraphQL gateway via gRPC response.
-7. GraphQL gateway maps the response to the GraphQL `Order` type and returns JSON to the client.
-8. _(async)_ Account Service receives the `order.created` NATS event and processes it independently.
+3. Resolver calls `Catalog.GetProducts` to fetch full product details (name, description, price).
+4. Resolver calls `orderClient.PostOrder(ctx, accountID, products)` — a gRPC call to Order Service.
+5. Order Service checks MongoDB for a recent order by the same account (within 60 seconds); rejects with a duplicate-order error if found.
+6. Order Service calls `Catalog.DecreaseStock` for each product in sequence. If any product has insufficient stock, all previously decremented quantities are restored via `Catalog.IncreaseStock` and an error is returned.
+7. Order Service generates a KSUID, calculates `totalPrice`, persists the order to MongoDB.
+8. Order Service publishes an `order.created` event to NATS.
+9. Order Service returns the new `Order` to the GraphQL gateway via gRPC response.
+10. GraphQL gateway maps the response to the GraphQL `Order` type and returns JSON to the client.
+11. _(async)_ Account Service receives the `order.created` NATS event and processes it independently.

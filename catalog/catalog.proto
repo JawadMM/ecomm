@@ -8,6 +8,8 @@ service CatalogService {
   rpc PostProduct (PostProductRequest) returns (PostProductResponse);
   rpc GetProduct (GetProductRequest) returns (GetProductResponse);
   rpc GetProducts (GetProductsRequest) returns (GetProductsResponse);
+  rpc DecreaseStock (DecreaseStockRequest) returns (DecreaseStockResponse);
+  rpc IncreaseStock (IncreaseStockRequest) returns (IncreaseStockResponse);
 }
 
 message Product {
@@ -15,12 +17,14 @@ message Product {
   string name = 2;
   string description = 3;
   double price = 4;
+  uint32 stock = 5;
 }
 
 message PostProductRequest {
   string name = 1;
   string description = 2;
   double price = 3;
+  uint32 stock = 4;
 }
 
 message PostProductResponse {
@@ -44,4 +48,22 @@ message GetProductsRequest {
 
 message GetProductsResponse {
   repeated Product products = 1;
+}
+
+message DecreaseStockRequest {
+  string product_id = 1;
+  uint32 quantity = 2;
+}
+
+message DecreaseStockResponse {
+  Product product = 1;
+}
+
+message IncreaseStockRequest {
+  string product_id = 1;
+  uint32 quantity = 2;
+}
+
+message IncreaseStockResponse {
+  Product product = 1;
 }

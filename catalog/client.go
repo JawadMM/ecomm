@@ -26,57 +26,67 @@ func (c *Client) Close() {
 	c.conn.Close()
 }
 
-func (c *Client) PostProduct(ctx context.Context, name, description string, price float64) (*Product, error) {
-	res, err := c.service.PostProduct(ctx, &pb.PostProductRequest{Name: name, Description: description, Price: price})
+func pbToProduct(p *pb.Product) *Product {
+	return &Product{
+		ID:          p.Id,
+		Name:        p.Name,
+		Description: p.Description,
+		Price:       p.Price,
+		Stock:       p.Stock,
+	}
+}
+
+func (c *Client) PostProduct(ctx context.Context, name, description string, price float64, stock uint32) (*Product, error) {
+	res, err := c.service.PostProduct(ctx, &pb.PostProductRequest{
+		Name:        name,
+		Description: description,
+		Price:       price,
+		Stock:       stock,
+	})
 	if err != nil {
 		return nil, err
 	}
-	return &Product{
-		ID:          res.Product.Id,
-		Name:        res.Product.Name,
-		Description: res.Product.Description,
-		Price:       res.Product.Price,
-	}, nil
+	return pbToProduct(res.Product), nil
 }
 
 func (c *Client) GetProduct(ctx context.Context, id string) (*Product, error) {
-	res, err := c.service.GetProduct(
-		ctx,
-		&pb.GetProductRequest{Id: id},
-	)
+	res, err := c.service.GetProduct(ctx, &pb.GetProductRequest{Id: id})
 	if err != nil {
 		return nil, err
 	}
-	return &Product{
-		ID:          res.Product.Id,
-		Name:        res.Product.Name,
-		Description: res.Product.Description,
-		Price:       res.Product.Price,
-	}, nil
+	return pbToProduct(res.Product), nil
 }
 
 func (c *Client) GetProducts(ctx context.Context, query string, ids []string, skip, take uint64) ([]*Product, error) {
-	res, err := c.service.GetProducts(
-		ctx,
-		&pb.GetProductsRequest{
-			Query: query,
-			Ids:   ids,
-			Skip:  skip,
-			Take:  take,
-		},
-	)
+	res, err := c.service.GetProducts(ctx, &pb.GetProductsRequest{
+		Query: query,
+		Ids:   ids,
+		Skip:  skip,
+		Take:  take,
+	})
 	if err != nil {
 		return nil, err
 	}
-	
+
 	products := make([]*Product, len(res.Products))
 	for i, p := range res.Products {
-		products[i] = &Product{
-			ID:          p.Id,
-			Name:        p.Name,
-			Description: p.Description,
-			Price:       p.Price,
-		}
+		products[i] = pbToProduct(p)
 	}
 	return products, nil
+}
+
+func (c *Client) DecreaseStock(ctx context.Context, productID string, quantity uint32) error {
+	_, err := c.service.DecreaseStock(ctx, &pb.DecreaseStockRequest{
+		ProductId: productID,
+		Quantity:  quantity,
+	})
+	return err
+}
+
+func (c *Client) IncreaseStock(ctx context.Context, productID string, quantity uint32) error {
+	_, err := c.service.IncreaseStock(ctx, &pb.IncreaseStockRequest{
+		ProductId: productID,
+		Quantity:  quantity,
+	})
+	return err
 }

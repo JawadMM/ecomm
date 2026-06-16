@@ -33,6 +33,7 @@ type Product {
     name: String!
     description: String!
     price: Float!
+    stock: Int!
 }
 
 type Order {
@@ -65,6 +66,7 @@ input ProductInput {
     name: String!
     description: String!
     price: Float!
+    stock: Int!
 }
 
 input OrderProductInput {
@@ -222,6 +224,7 @@ query {
     name
     description
     price
+    stock
   }
 }
 ```
@@ -234,6 +237,7 @@ query {
     name
     description
     price
+    stock
   }
 }
 ```
@@ -246,7 +250,8 @@ query {
         "id": "2ghi...rst",
         "name": "Widget",
         "description": "A useful widget",
-        "price": 29.99
+        "price": 29.99,
+        "stock": 42
       }
     ]
   }
@@ -260,6 +265,7 @@ query {
     id
     name
     price
+    stock
   }
 }
 ```
@@ -312,6 +318,7 @@ Adds a new product to the catalog.
 | `name` | `String!` | Product name |
 | `description` | `String!` | Product description (searchable) |
 | `price` | `Float!` | Unit price |
+| `stock` | `Int!` | Initial available units |
 
 **Example**
 ```graphql
@@ -320,11 +327,13 @@ mutation {
     name: "Widget"
     description: "A useful widget for everyday tasks"
     price: 29.99
+    stock: 100
   }) {
     id
     name
     description
     price
+    stock
   }
 }
 ```
@@ -336,7 +345,8 @@ mutation {
       "id": "2ghi...rst",
       "name": "Widget",
       "description": "A useful widget for everyday tasks",
-      "price": 29.99
+      "price": 29.99,
+      "stock": 100
     }
   }
 }
@@ -362,7 +372,16 @@ Places a new order for an account.
 | `id` | `String!` | Product ID |
 | `quantity` | `Int!` | Number of units |
 
-The gateway forwards the product list directly to the Order Service. The Order Service calculates `totalPrice` as `Σ (product.price × quantity)`.
+**Order flow (gateway perspective)**
+
+1. Fetches full product details from the Catalog Service.
+2. Builds the product snapshot and calls the Order Service.
+3. The Order Service enforces business rules before persisting (see below).
+
+**Business rules enforced by the Order Service**
+
+- **Stock check:** Each product's stock is decremented atomically. If any product has insufficient stock, the entire order is rejected and any already-decremented stock is restored.
+- **Duplicate prevention:** An order for the same account is rejected if another order was placed within the last 60 seconds.
 
 **Example**
 ```graphql

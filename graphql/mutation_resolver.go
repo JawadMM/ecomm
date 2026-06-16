@@ -21,11 +21,11 @@ func (r *mutationResolver) CreateAccount(ctx context.Context, input AccountInput
 }
 
 func (r *mutationResolver) CreateProduct(ctx context.Context, input ProductInput) (*Product, error) {
-	p, err := r.server.catalogClient.PostProduct(ctx, input.Name, input.Description, input.Price)
+	p, err := r.server.catalogClient.PostProduct(ctx, input.Name, input.Description, input.Price, uint32(input.Stock))
 	if err != nil {
 		return nil, err
 	}
-	return &Product{ID: p.ID, Name: p.Name, Description: p.Description, Price: p.Price}, nil
+	return &Product{ID: p.ID, Name: p.Name, Description: p.Description, Price: p.Price, Stock: int(p.Stock)}, nil
 }
 
 func (r *mutationResolver) CreateOrder(ctx context.Context, input OrderInput) (*Order, error) {

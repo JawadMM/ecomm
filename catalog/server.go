@@ -17,8 +17,7 @@ type grpcServer struct {
 
 func NewGRPCServer(service Service) *grpcServer {
 	return &grpcServer{service: service}
-}	
-
+}
 
 func ListenGRPC(service Service, port int) error {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
@@ -32,12 +31,22 @@ func ListenGRPC(service Service, port int) error {
 	return server.Serve(lis)
 }
 
+func productToPb(p *Product) *pb.Product {
+	return &pb.Product{
+		Id:          p.ID,
+		Name:        p.Name,
+		Description: p.Description,
+		Price:       p.Price,
+		Stock:       p.Stock,
+	}
+}
+
 func (s *grpcServer) PostProduct(ctx context.Context, req *pb.PostProductRequest) (*pb.PostProductResponse, error) {
-	product, err := s.service.PostProduct(ctx, req.Name, req.Description, req.Price)
+	product, err := s.service.PostProduct(ctx, req.Name, req.Description, req.Price, req.Stock)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.PostProductResponse{Product: &pb.Product{Id: product.ID, Name: product.Name, Description: product.Description, Price: product.Price}}, nil
+	return &pb.PostProductResponse{Product: productToPb(product)}, nil
 }
 
 func (s *grpcServer) GetProduct(ctx context.Context, req *pb.GetProductRequest) (*pb.GetProductResponse, error) {
@@ -45,11 +54,7 @@ func (s *grpcServer) GetProduct(ctx context.Context, req *pb.GetProductRequest) 
 	if err != nil {
 		return nil, err
 	}
-	return &pb.GetProductResponse{Product: &pb.Product{
-		Id: product.ID, 
-		Name: product.Name, 
-		Description: product.Description, 
-		Price: product.Price}}, nil
+	return &pb.GetProductResponse{Product: productToPb(product)}, nil
 }
 
 func (s *grpcServer) GetProducts(ctx context.Context, req *pb.GetProductsRequest) (*pb.GetProductsResponse, error) {
@@ -69,11 +74,23 @@ func (s *grpcServer) GetProducts(ctx context.Context, req *pb.GetProductsRequest
 
 	pbProducts := make([]*pb.Product, len(res))
 	for i, product := range res {
-		pbProducts[i] = &pb.Product{
-			Id: product.ID,
-			Name: product.Name, 
-			Description: product.Description, 
-			Price: product.Price}
+		pbProducts[i] = productToPb(&product)
 	}
 	return &pb.GetProductsResponse{Products: pbProducts}, nil
+}
+
+func (s *grpcServer) DecreaseStock(ctx context.Context, req *pb.DecreaseStockRequest) (*pb.DecreaseStockResponse, error) {
+	product, err := s.service.DecreaseStock(ctx, req.ProductId, req.Quantity)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.DecreaseStockResponse{Product: productToPb(product)}, nil
+}
+
+func (s *grpcServer) IncreaseStock(ctx context.Context, req *pb.IncreaseStockRequest) (*pb.IncreaseStockResponse, error) {
+	product, err := s.service.IncreaseStock(ctx, req.ProductId, req.Quantity)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.IncreaseStockResponse{Product: productToPb(product)}, nil
 }
