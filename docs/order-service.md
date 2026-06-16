@@ -39,6 +39,7 @@ type OrderedProduct struct {
   "created_at": "ISODate",
   "account_id": "<ksuid>",
   "total_price": 59.98,
+  "hash": "<md5 of normalized product content>",
   "products": [
     {
       "id": "<ksuid>",
@@ -136,7 +137,7 @@ Each `Order` contains the full product snapshot stored at order creation time.
 - **Total price:** Calculated as `Σ (product.price × product.quantity)` over all products in the request.
 - **Product snapshot:** Full product details (name, description, price) are copied into the order document at creation time, decoupling order history from future catalog changes.
 - **No pagination** on `GetOrdersForAccount` — all orders for an account are returned in a single response.
-- **Duplicate order prevention:** If the same account already has an order created within the last 60 seconds, `PostOrder` returns an error. This is enforced via a MongoDB `CountDocuments` query before insertion.
+- **Duplicate order prevention:** Each order is fingerprinted with an MD5 `hash` computed over its product content. The product list is first normalized by sorting on product `id` and reduced to `id:quantity;` pairs, so two orders with the same products and quantities produce the same hash **regardless of array ordering**. `PostOrder` rejects an order if the same account already has an order with an identical hash created within the last 60 seconds (enforced via a MongoDB `CountDocuments` query on `account_id` + `hash` + `created_at`). Orders with *different* content are allowed within the window; only identical-content resubmissions are blocked. A compound index on `{account_id, hash, created_at}` keeps this lookup fast at scale.
 - **Stock check & deduction:** Before persisting the order, the service calls `Catalog.DecreaseStock` for each product in the order. If any product has insufficient stock, all already-decremented quantities are restored via `Catalog.IncreaseStock` (compensating transaction) and the error is returned. If the Catalog Service URL is not configured, stock checking is skipped.
 
 ---
